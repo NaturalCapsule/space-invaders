@@ -8,11 +8,12 @@ class Game:
     def __init__(self, height=650, width=550):
         game.init()
         game.mixer.init()
+        game.font.init()
         self.WIDTH: int = width
         self.HEIGHT: int = height
         self.bullets: list = []  # Player bullets
         self.bot_bullets: list = []  # Bot bullets
-        self.player_pos: int = game.Vector2(width / 2 + 100, 380)  # Player position
+        self.player_pos = game.Vector2(width / 2 + 100, 380)  # Player position
         self.cap = cv2.VideoCapture('space.mp4')
         # Bullet dimensions
         self.bullet_width = 3
@@ -25,6 +26,8 @@ class Game:
         self.enemy_image = game.image.load('enemy.png')
         self.enemy_image = game.transform.scale(self.enemy_image, (50, 50))
 
+
+        self.player_score = 0
         # Load sounds
         self.shooting_sound = game.mixer.Sound('shoot.wav')
         self.movement_sound = game.mixer.Sound('move.wav')
@@ -32,11 +35,11 @@ class Game:
         self.last_shot_time = 0
         self.shoot_delay = 500
 
-        screen: int = game.display.set_mode((height, width))
+        screen = game.display.set_mode((height, width))
         new_icon = game.image.load('icon.png')
         game.display.set_icon(new_icon)
         game.display.set_caption('Space Invaders')
-        clock: int = game.time.Clock()
+        clock = game.time.Clock()
         game.mixer.music.load('song.mpeg')
         game.mixer.music.play(loops=-1)
 
@@ -57,19 +60,26 @@ class Game:
             self.update_bot_bullets(screen)  # Update bot bullets
             self.bot_shoot()  # Bots shoot bullets randomly
 
+            font = game.font.SysFont('Comic Sans MS', 24)
+            text = font.render(f'Score: {self.player_score}', False, (255, 255, 255))
+            screen.blit(text, (0, 500))
+
+
             if not self.bots:
                 print('You Won')
                 game.mixer.music.load('victory.wav')
                 game.mixer.music.play()
+                text = font.render('You Won The Game!', False, (255, 255, 255))
+                screen.blit(text, (225, 225))
+                game.display.flip()
                 time.sleep(3)
                 running = False
-
             game.display.flip()
             clock.tick(60)
 
         self.quit_game()
     def player(self, screen):
-        player_rect: list = self.player_image.get_rect(center = (self.player_pos.x, self.player_pos.y))
+        player_rect = self.player_image.get_rect(center = (self.player_pos.x, self.player_pos.y))
         screen.blit(self.player_image, player_rect)
 
     def movement(self, event, move_distance=100):
@@ -144,7 +154,8 @@ class Game:
             for bot in self.bots[:]:
                 if bullet.colliderect(bot['rect']):
                     self.bullets.remove(bullet)  # Remove bullet
-                    self.bots.remove(bot)  # Remove bot on collision
+                    self.bots.remove(bot)# Remove bot on collision
+                    self.player_score += 1
                     break  # Exit loop since bullet is removed
 
             # Remove bullet if it goes off-screen
@@ -169,6 +180,10 @@ class Game:
             if bullet.colliderect(player_rect):
                 game.mixer.music.load('death.wav')
                 game.mixer.music.play()
+                font = game.font.SysFont('Comic Sans MS', 24)
+                text = font.render('You Lost The Game!', False, (255, 255, 255))
+                screen.blit(text, (225, 225))
+                game.display.flip()
                 print("You Lost")
                 time.sleep(3)
                 sys.exit()
