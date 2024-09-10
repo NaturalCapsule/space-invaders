@@ -8,11 +8,11 @@ class Game:
     def __init__(self, height=650, width=550):
         game.init()
         game.mixer.init()
-        self.WIDTH = width
-        self.HEIGHT = height
-        self.bullets = []  # Player bullets
-        self.bot_bullets = []  # Bot bullets
-        self.player_pos = game.Vector2(width / 2 + 100, 380)  # Player position
+        self.WIDTH: int = width
+        self.HEIGHT: int = height
+        self.bullets: list = []  # Player bullets
+        self.bot_bullets: list = []  # Bot bullets
+        self.player_pos: int = game.Vector2(width / 2 + 100, 380)  # Player position
         self.cap = cv2.VideoCapture('space.mp4')
         # Bullet dimensions
         self.bullet_width = 3
@@ -29,12 +29,18 @@ class Game:
         self.shooting_sound = game.mixer.Sound('shoot.wav')
         self.movement_sound = game.mixer.Sound('move.wav')
 
-        screen = game.display.set_mode((height, width))
-        clock = game.time.Clock()
+        self.last_shot_time = 0
+        self.shoot_delay = 500
+
+        screen: int = game.display.set_mode((height, width))
+        new_icon = game.image.load('icon.png')
+        game.display.set_icon(new_icon)
+        game.display.set_caption('Space Invaders')
+        clock: int = game.time.Clock()
         game.mixer.music.load('song.mpeg')
         game.mixer.music.play(loops=-1)
 
-        running = True
+        running: bool = True
         while running:
             for event in game.event.get():
                 if event.type == game.QUIT:
@@ -63,7 +69,7 @@ class Game:
 
         self.quit_game()
     def player(self, screen):
-        player_rect = self.player_image.get_rect(center = (self.player_pos.x, self.player_pos.y))
+        player_rect: list = self.player_image.get_rect(center = (self.player_pos.x, self.player_pos.y))
         screen.blit(self.player_image, player_rect)
 
     def movement(self, event, move_distance=100):
@@ -80,7 +86,7 @@ class Game:
 
     def create_bots(self, bot_radius=20):
         # Create bots with their positions in a grid pattern
-        bot_positions = [
+        bot_positions: list = [
             game.Vector2(50, 50), game.Vector2(50, 150), game.Vector2(50, 250),
             game.Vector2(150, 50), game.Vector2(150, 150), game.Vector2(150, 250),
             game.Vector2(250, 50), game.Vector2(250, 150), game.Vector2(250, 250),
@@ -88,7 +94,7 @@ class Game:
             game.Vector2(450, 50), game.Vector2(450, 150), game.Vector2(450, 250),
             game.Vector2(550, 50), game.Vector2(550, 150), game.Vector2(550, 250),
         ]
-        bots = []
+        bots: list = []
         for pos in bot_positions:
             bot_rect = game.Rect(pos.x, pos.y, bot_radius * 2, bot_radius * 2)
             bots.append({'rect': bot_rect})  # Store the rect of each bot
@@ -118,12 +124,15 @@ class Game:
         game.draw.line(screen, 'white', width=6, start_pos=(30, 420), end_pos=(625, 420))
 
     def shooting(self, event):
+        current_time = game.time.get_ticks()
         if event.type == game.KEYDOWN:
-            if event.key == game.K_SPACE:
+            if event.key == game.K_SPACE and current_time - self.last_shot_time > self.shoot_delay:
                 # Create a bullet at the player's position (center top of the player)
                 bullet_rect = game.Rect(self.player_pos.x, self.player_pos.y - 20, self.bullet_width, self.bullet_height)
                 self.bullets.append(bullet_rect)
                 self.shooting_sound.play()
+                self.last_shot_time = current_time
+
 
     def update_bullets(self, screen):
         # Move bullets upwards and check for collisions
