@@ -20,28 +20,39 @@ class Game:
         self.bullet_height = 8
         # Create bots and store them in self.bots
         self.bots = self.create_bots()
+        # self.Boss = self.final_boss()
+        self.Boss = None  # Placeholder for the Boss data
+        self.initialize_boss()
         self.player_image = game.image.load('player.png')
         self.player_image = game.transform.scale(self.player_image, (50, 50))
 
         self.enemy_image = game.image.load('enemy.png')
         self.enemy_image = game.transform.scale(self.enemy_image, (50, 50))
 
+        self.boss_image = game.image.load('boss.png')
+        self.boss_image = game.transform.scale(self.boss_image, (50, 50))
 
         self.player_score = 0
+        self.final_boss_health = 15
         # Load sounds
         self.shooting_sound = game.mixer.Sound('shoot.wav')
         self.movement_sound = game.mixer.Sound('move.wav')
+        self.boss_sound = game.mixer.Sound('final_boss_sound.wav')
+        self.game_sound = game.mixer.Sound('song.mpeg')
+        self.game_sound.play(loops = -1)
 
         self.last_shot_time = 0
         self.shoot_delay = 500
+        self.last_boss_update_time = 0
+        self.boss_update_interval = 1500
 
         screen = game.display.set_mode((height, width))
         new_icon = game.image.load('icon.png')
         game.display.set_icon(new_icon)
         game.display.set_caption('Space Invaders')
         clock = game.time.Clock()
-        game.mixer.music.load('song.mpeg')
-        game.mixer.music.play(loops=-1)
+        # game.mixer.music.load('song.mpeg')
+        # game.mixer.music.play(loops=-1)
 
         running: bool = True
         while running:
@@ -51,6 +62,11 @@ class Game:
 
                 self.shooting(event)
                 self.movement(event)
+
+            current_time = game.time.get_ticks()
+            if current_time - self.last_boss_update_time > self.boss_update_interval:
+                self.Boss = self.final_boss()  # Update boss position
+                self.last_boss_update_time = current_time
 
             self.video(screen)
             self.player(screen)  # Draw player
@@ -64,16 +80,27 @@ class Game:
             text = font.render(f'Score: {self.player_score}', False, (255, 255, 255))
             screen.blit(text, (0, 500))
 
-
             if not self.bots:
-                print('You Won')
-                game.mixer.music.load('victory.wav')
-                game.mixer.music.play()
-                text = font.render('You Won The Game!', False, (255, 255, 255))
-                screen.blit(text, (225, 225))
-                game.display.flip()
-                time.sleep(3)
-                running = False
+                # print('You Won')
+                # game.mixer.music.load('victory.wav')
+                # game.mixer.music.play()
+                # text = font.render('You Won The Game!', False, (255, 255, 255))
+                # screen.blit(text, (225, 225))
+                # game.display.flip()
+                # time.sleep(3)
+                # running = False
+                self.draw_final_boss(screen)
+                self.boss_shoot()
+                if not self.Boss:
+                    print('You Won')
+                    self.boss_sound.stop()
+                    game.mixer.music.load('victory.wav')
+                    game.mixer.music.play()
+                    text = font.render('You Won The Game!', False, (255, 255, 255))
+                    screen.blit(text, (225, 225))
+                    game.display.flip()
+                    time.sleep(3)
+                    running = False
             game.display.flip()
             clock.tick(60)
 
@@ -141,10 +168,12 @@ class Game:
                 bullet_rect = game.Rect(self.player_pos.x, self.player_pos.y - 20, self.bullet_width, self.bullet_height)
                 self.bullets.append(bullet_rect)
                 self.shooting_sound.play()
-                self.last_shot_time = current_time
+                # self.last_shot_time = current_time # UNCOMMENT THIS WHEN U DONE DEBUGGING
 
 
     def update_bullets(self, screen):
+        bullets_to_remove = []  # Track bullets to remove
+
         # Move bullets upwards and check for collisions
         for bullet in self.bullets[:]:
             bullet.y -= 5  # Bullet speed
@@ -153,14 +182,30 @@ class Game:
             # Check collision with bots
             for bot in self.bots[:]:
                 if bullet.colliderect(bot['rect']):
-                    self.bullets.remove(bullet)  # Remove bullet
-                    self.bots.remove(bot)# Remove bot on collision
+                    bullets_to_remove.append(bullet)  # Mark bullet for removal
+                    self.bots.remove(bot)  # Remove bot on collision
                     self.player_score += 1
-                    break  # Exit loop since bullet is removed
+                    break  # Exit loop since bot is removed
 
-            # Remove bullet if it goes off-screen
+            # Check collision with the boss
+            if self.Boss is not None and bullet.colliderect(self.Boss['rect']):
+                self.final_boss_health -= 1  # Decrease boss health
+                bullets_to_remove.append(bullet)  # Mark bullet for removal
+                if self.final_boss_health <= 0:  # If boss health is 0, remove the boss
+                    self.Boss = None  # Remove boss
+                    print("Boss defeated!")
+
+        # Remove bullets that collided with something or went off-screen
+        for bullet in bullets_to_remove:
+            if bullet in self.bullets:
+                self.bullets.remove(bullet)
+
+        # Remove bullets that go off-screen
+        for bullet in self.bullets[:]:
             if bullet.bottom < 0:
                 self.bullets.remove(bullet)
+
+
 
     def bot_shoot(self):
         # Randomly make a bot shoot bullets downwards
@@ -178,6 +223,8 @@ class Game:
             # Check collision with player
             player_rect = game.Rect(self.player_pos.x - 20, self.player_pos.y - 20, 40, 40)
             if bullet.colliderect(player_rect):
+                self.game_sound.stop()
+                self.boss_sound.stop()
                 game.mixer.music.load('death.wav')
                 game.mixer.music.play()
                 font = game.font.SysFont('Comic Sans MS', 24)
@@ -191,6 +238,40 @@ class Game:
             # Remove bullet if it goes off-screen
             if bullet.top > self.HEIGHT:
                 self.bot_bullets.remove(bullet)
+
+    def final_boss(self, boss_radius=20):
+        boss_positions = [
+            game.Vector2(50, 50), game.Vector2(150, 50), game.Vector2(250, 50),
+            game.Vector2(350, 50), game.Vector2(450, 50), game.Vector2(550, 50),
+        ]
+        random_boss_location = random.choice(boss_positions)
+        boss_rect = game.Rect(random_boss_location.x, random_boss_location.y, boss_radius * 2, boss_radius * 2)
+        return {'rect': boss_rect}
+
+
+    def initialize_boss(self):
+        self.Boss = self.final_boss()
+        self.final_boss_health = 15
+
+    def draw_final_boss(self, screen):
+        if self.Boss:
+            self.game_sound.stop()
+            self.boss_sound.play(loops = -1)
+            # Draw the boss
+            boss_rect = self.boss_image.get_rect(center=self.Boss['rect'].center)  # Get the center of the boss rect
+            screen.blit(self.boss_image, boss_rect)
+
+            # Display boss health
+            font = game.font.SysFont('Comic Sans MS', 24)
+            text = font.render(f'Final Boss health {self.final_boss_health}', False, (255, 255, 255))
+            screen.blit(text, (225, 500))
+
+
+    def boss_shoot(self):
+        if self.Boss and len(self.Boss) > 0 and random.randint(0, 50) == 1:  # 1/50 chance per frame
+            shooting_boss = self.Boss # Assuming there's only one boss
+            bullet_rect = game.Rect(shooting_boss['rect'].centerx, shooting_boss['rect'].bottom, self.bullet_width, self.bullet_height)
+            self.bot_bullets.append(bullet_rect)
 
     def quit_game(self):
         self.cap.release()
