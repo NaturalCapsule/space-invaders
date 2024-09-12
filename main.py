@@ -81,14 +81,6 @@ class Game:
             screen.blit(text, (0, 500))
 
             if not self.bots:
-                # print('You Won')
-                # game.mixer.music.load('victory.wav')
-                # game.mixer.music.play()
-                # text = font.render('You Won The Game!', False, (255, 255, 255))
-                # screen.blit(text, (225, 225))
-                # game.display.flip()
-                # time.sleep(3)
-                # running = False
                 self.draw_final_boss(screen)
                 self.boss_shoot()
                 if not self.Boss:
@@ -102,7 +94,7 @@ class Game:
                     time.sleep(3)
                     running = False
             game.display.flip()
-            clock.tick(60)
+            clock.tick(120)
 
         self.quit_game()
     def player(self, screen):
