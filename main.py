@@ -168,7 +168,7 @@ class Game:
                 bullet_rect = game.Rect(self.player_pos.x, self.player_pos.y - 20, self.bullet_width, self.bullet_height)
                 self.bullets.append(bullet_rect)
                 self.shooting_sound.play()
-                # self.last_shot_time = current_time # UNCOMMENT THIS WHEN U DONE DEBUGGING
+                self.last_shot_time = current_time
 
 
     def update_bullets(self, screen):
